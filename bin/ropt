@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+"""ropt
+
+Usage:
+  ropt [options] [post|put|delete] <url> [<url-args>...]
+
+Ropt is a tool that helps you interact with REST APIs from the command line.
+
+
+Options:
+  -h --help             Print this usage message
+  -X --request=<rq>     HTTP request method to use [default: GET]
+                        (overriden by method arguments)
+  --log=<level>         Log level to use [default: warning]
+                        (log levels: debug, info, warning, error, critical)
+
+"""
+import logging
+import re
+import sys
+
+from docopt import docopt
+from requests import Request, Session
+from requests.exceptions import RequestException
+
+ROPT_VERSION = "ropt 0.1.1"
+
+SUPPORTED_METHODS = [
+        'GET',
+        'HEAD',
+        'POST',
+        'PUT',
+        'DELETE',
+        # 'TRACE',
+        'OPTIONS',
+        # 'CONNECT',
+        'PATCH',
+]
+"""HTTP request methods supported by ropt"""
+
+CMD_METHODS = [
+        # 'head',
+        'post',
+        'put',
+        'delete',
+]
+"""CLI commands which can set the HTTP request method"""
+
+
+def main(args):
+    # Parse log level
+    log_level = getattr(logging, args['--log'].upper(), None)
+    if not isinstance(log_level, int):
+        raise ValueError('Invalid log level: %s' % log_level)
+    logging.basicConfig(level=log_level)
+
+    logging.debug('ropt arguments:\n%s' % args)
+
+    # Parse HTTP Method
+    method = args['--request']
+    for m in CMD_METHODS:
+        if args[m]:
+            method = m
+    method = method.upper()
+    # TODO: write integration test for contract: if invalid http method is
+    # specified, exits with code 1
+    if method not in SUPPORTED_METHODS:
+        raise ValueError(
+                "Unsupported HTTP method specified:\t%s\n" % method
+                + "Supported methods are %s" % ", ".join(SUPPORTED_METHODS)
+        )
+
+    # parse Query variables
+    payload = {}
+    query_opt_re = re.compile("^--(?P<key>[\w-]+)=(?P<value>.+)$")
+    for arg in args['<url-args>']:
+        query_opt_m = query_opt_re.match(arg)
+        if query_opt_m is None:
+            raise ValueError("Unsupported url argument encountered:\t%s" % arg)
+        payload[query_opt_m.group('key')] = query_opt_m.group('value')
+    logging.debug('parsed url arguments:\n%s' % payload)
+
+
+    # Prepare Request
+    session = Session()
+    # TODO: catch urls that don't begin with protocol spec
+    req = Request(method, args['<url>'],
+            params=payload)
+    req_p = req.prepare()
+
+    # Perform Request
+    resp = session.send(req_p)
+
+    print(resp.text)
+
+
+if __name__ == '__main__':
+    arguments = docopt(__doc__, version=ROPT_VERSION, options_first=True)
+    try:
+        main(arguments)
+    except ValueError as err:
+        for earg in err.args:
+            print(earg, file=sys.stderr)
+        print("\nRun 'ropt --help' for usage instructions.", file=sys.stderr)
+        sys.exit(1)
+    except RequestException as err:
+        print("Error: %s" % err.args[0], file=sys.stderr)
+        sys.exit(1)
