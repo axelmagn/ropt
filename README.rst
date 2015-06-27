@@ -6,12 +6,20 @@ Curl already does this, and I think everyone should learn to use Curl before
 they use Ropt.  It's one of the most powerful tools in the 'nix toolbox.
 However, for day to day use, using Curl on REST APIs can feel like driving a
 race car to the grocery store.  Think of Ropt as the scooter you drive around
-town for errands.  There's nothing that it does better than Curl (trust me), it
-just feels a little more convenient sometimes.
+town for errands.  it just feels a little more convenient sometimes.
 
-Usage
------
+Note
+----
 
-::
+Ropt is in **extremely** early development.  It would be a horrible idea to use
+this tool right now.
 
-    ropt [OPTIONS] <url> [REQ-INPUT]
+Url Mode
+--------
+
+At its most basic, ropt can be used to craft a HTTP request to a specific URL.::
+
+    Usage:
+      ropt [options] [post|put|delete] <url> [<args>...]
+
+This lets you craft HTTP requests with relative ease.
