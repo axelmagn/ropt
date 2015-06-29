@@ -2,7 +2,7 @@
 """ropt
 
 Usage:
-  ropt [options] [post|put|delete] <url> [<url-args>...]
+ropt [options] [post|put|delete] <url> [<url-args>...]
 
 Ropt is a tool that helps you interact with REST APIs from the command line.
 
@@ -11,7 +11,7 @@ Options:
   -h --help             Print this usage message
   -X --request=<rq>     HTTP request method to use [default: GET]
                         (overriden by method arguments)
-  --log=<level>         Log level to use [default: warning]
+  --log=<level>         Log level to use [default: debug]
                         (log levels: debug, info, warning, error, critical)
 
 """
@@ -71,13 +71,21 @@ def main(args):
         )
 
     # parse Query variables
-    payload = {}
+    qparams = {}
     query_opt_re = re.compile("^--(?P<key>[\w-]+)=(?P<value>.+)$")
-    for arg in args['<url-args>']:
+    url_args = args['<url-args>']
+    if '--' in url_args:
+        ind = url_args.index('--')
+        query_args = url_args[:ind]
+        body_args = url_args[ind+1:]
+    else:
+        query_args = url_args
+        body_args = []
+    for arg in query_args:
         query_opt_m = query_opt_re.match(arg)
         if query_opt_m is None:
             raise ValueError("Unsupported url argument encountered:\t%s" % arg)
-        payload[query_opt_m.group('key')] = query_opt_m.group('value')
+        qparams[query_opt_m.group('key')] = query_opt_m.group('value')
     logging.debug('parsed url arguments:\n%s' % payload)
 
 
@@ -85,7 +93,7 @@ def main(args):
     session = Session()
     # TODO: catch urls that don't begin with protocol spec
     req = Request(method, args['<url>'],
-            params=payload)
+            params=qparams)
     req_p = req.prepare()
 
     # Perform Request
